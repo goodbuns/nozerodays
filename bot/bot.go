@@ -63,30 +63,8 @@ func check(err error) {
 	}
 }
 
-func ScrapeContributions(username string) {
-	c := colly.NewCollector()
-
-	c.OnHTML("#day", func(e *colly.HTMLElement) {
-		e.ForEach(".data-date", func(_ int, el *colly.HTMLElement) {
-			// name := strings.Split(el.ChildText(".card-header"), " ")
-			// g := Lottery{
-			// 	Name:      strings.Join(name[:len(name)-2], " "),
-			// 	CashValue: el.ChildText(".draw-cards--cash-value"),
-			// 	DrawDate:  el.ChildText(".draw-cards--next-draw-date"),
-			// }
-
-			// lotteryValue := strings.Split(el.ChildText(".draw-cards--lottery-amount"), " ")
-			// g.Value = strings.Join(lotteryValue, " ")
-			// if lotteryValue[len(lotteryValue)-1] == "MILLION*" {
-			// 	g.Millions, err = strconv.Atoi(lotteryValue[0][1:])
-			// 	if err != nil {
-			// 		fmt.Println("issues converting from string to int")
-			// 	}
-			// }
-			// lotteries = append(lotteries, g)
-		})
-	})
-
-	// page := scraper.Scrape("http://.com")
-
-}
+// get list of all organizations
+// check whether i'm an admin of the organization
+// create webhooks for all repos in organization that do not yet have expected webhook
+// create new webhook on new repos in my account or goodbuns
+// receive webhooks
