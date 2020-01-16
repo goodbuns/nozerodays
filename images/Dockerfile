@@ -19,4 +19,4 @@ COPY --from=builder /go/bin/nozerodays /go/bin/nozerodays
 
 USER app
 
-ENTRYPOINT ["/go/bin/nozerodays"]
+ENTRYPOINT ["exec", "/go/bin/nozerodays"]
