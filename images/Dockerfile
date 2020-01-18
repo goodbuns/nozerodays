@@ -12,11 +12,12 @@ COPY . .
 RUN go get -d -v ./...
 RUN CGO_ENABLED=0 go build -o /go/bin/nozerodays github.com/goodbuns/nozerodays/cmd
 
-FROM scratch
+FROM alpine:3.11.2
 
+RUN apk add --no-cache tzdata
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /go/bin/nozerodays /go/bin/nozerodays
 
 USER app
 
-ENTRYPOINT ["exec", "/go/bin/nozerodays"]
+ENTRYPOINT ["/go/bin/nozerodays"]

@@ -5,4 +5,4 @@ services:
     build:
       context: ../
       dockerfile: ./images/Dockerfile
-    # command: ["-db=postgresql://pooter:hunter2@db:5432/pooter"]
+    command: ["--username=$GITHUB_USERNAME", "--accessToken=$GITHUB_ACCESS_TOKEN", "--organizations=$ORGANIZATIONS", "--webhook=$WEBHOOK_URL", "--location=$LOCATION"]
