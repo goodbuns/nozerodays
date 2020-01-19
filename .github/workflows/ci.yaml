@@ -1,0 +1,31 @@
+name: CI
+
+on: [push]
+  # push:
+  #     branches:
+  #       - master
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: GitHub Docker Action
+        uses: matootie/github-docker@v2.0.0
+        with:
+          # GitHub Repository Token to log in using.
+          accessToken: ${{ secrets.GITHUB_ACCESS_TOKEN }}
+          # Where should GitHub Docker find the Dockerfile, relative to the root of the repository.
+          context: ./images
+          # GitHub user to publish the image on behalf of.
+          username: ${{ secrets.USERNAME }}
+  # deploy:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Set up kubectl
+  #     uses: matootie/dokube@v1.2.0
+  #     with:
+  #       personalAccessToken: ${{ secrets.DIGITALOCEAN_TOKEN }}
+  #       clusterName: production
+  #       expirationTime: 300
+  #   - name: Get nodes
+  #     run: kubectl get nodes
+
