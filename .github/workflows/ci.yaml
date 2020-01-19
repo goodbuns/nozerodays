@@ -1,31 +1,20 @@
-name: CI
+name: ci
 
 on: [push]
-  # push:
-  #     branches:
-  #       - master
+
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
-      - name: GitHub Docker Action
-        uses: matootie/github-docker@v2.0.0
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
         with:
-          # GitHub Repository Token to log in using.
-          accessToken: ${{ secrets.GITHUB_ACCESS_TOKEN }}
-          # Where should GitHub Docker find the Dockerfile, relative to the root of the repository.
-          context: ./images
-          # GitHub user to publish the image on behalf of.
-          username: ${{ secrets.USERNAME }}
-  # deploy:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - name: Set up kubectl
-  #     uses: matootie/dokube@v1.2.0
-  #     with:
-  #       personalAccessToken: ${{ secrets.DIGITALOCEAN_TOKEN }}
-  #       clusterName: production
-  #       expirationTime: 300
-  #   - name: Get nodes
-  #     run: kubectl get nodes
+          go-version: 1.13
+        id: go
+      - name: Check out code
+        uses: actions/checkout@v1
+        # add unit tests later
 
+  # todo: later make it into a cron job in kubernetes?
+  # todo: create a new github account to login to docker as
+  # todo: add ability to set time when bot scans for commit

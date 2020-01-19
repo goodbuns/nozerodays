@@ -27,6 +27,8 @@ func New() *Config {
 	zl := zerolog.New(os.Stdout).With().Timestamp().Str("host", host)
 	logger := zl.Logger()
 
+	logger.Info().Msg(fmt.Sprint("set configuration:", *username, *orgs, *l))
+
 	location, err := time.LoadLocation(*l)
 	if err != nil {
 		logger.Err(err).Msg("")
