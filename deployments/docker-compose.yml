@@ -4,5 +4,5 @@ services:
   nozerodays:
     build:
       context: ../
-      dockerfile: ./images/Dockerfile
+      dockerfile: ./Dockerfile
     command: ["--username=$GITHUB_USERNAME", "--accessToken=$GITHUB_ACCESS_TOKEN", "--organizations=$ORGANIZATIONS", "--webhook=$WEBHOOK_URL", "--location=$LOCATION"]

@@ -27,7 +27,7 @@ func New() *Config {
 	zl := zerolog.New(os.Stdout).With().Timestamp().Str("host", host)
 	logger := zl.Logger()
 
-	logger.Info().Msg(fmt.Sprint("set configuration:", *username, *orgs, *l))
+	logger.Info().Msg(fmt.Sprintln("set configuration:", *username, *orgs, *l))
 
 	location, err := time.LoadLocation(*l)
 	if err != nil {
@@ -54,17 +54,28 @@ type Config struct {
 // Start starts the bot.
 func (c *Config) Start() {
 	for true {
+		currentTime := time.Now()
+		// check whether it's past 8pm, if not, sleep until 8pm.
+		today8PM := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 20, 0, 0, 0, c.location)
+		timeUntil8 := time.Until(today8PM)
+		if timeUntil8 > 0 {
+			c.logger.Info().Msg(fmt.Sprintf("it is not yet 8pm. sleeping for %v until %v", timeUntil8, today8PM))
+			time.Sleep(timeUntil8)
+		}
+
 		c.logger.Info().Msg("start scan")
 		repos, err := c.github.Repositories()
 		if err != nil {
 			c.logger.Err(err).Msg("failed to find repositories associated with the user/orgs requested")
 		}
+		r := fmt.Sprintf("%v", repos)
+		c.logger.Info().Msg(r)
+
 		commit, err := c.github.CommitCreatedToday(repos, c.location)
 		if err != nil {
 			c.logger.Err(err).Msg("failed to find commit created today successfully")
 		}
 
-		currentTime := time.Now()
 		if commit != nil {
 			c.logger.Info().Msg(fmt.Sprintf("found commit for today (%s) with commit URL (%s)", commit.Commit.Author.Date.String(), commit.URL))
 			// Send slack message.
@@ -82,17 +93,9 @@ func (c *Config) Start() {
 			c.logger.Info().Msg(fmt.Sprintf("sleeping for %v until %v", duration, tomorrow))
 			time.Sleep(duration)
 		} else {
-			// check whether it's past 8pm, if not, sleep until 8pm.
-			today8PM := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 20, 0, 0, 0, c.location)
-			timeUntil8 := time.Until(today8PM)
-			if currentTime.Add(timeUntil8).After(currentTime) {
-				c.logger.Info().Msg(fmt.Sprintf("it is not yet 8pm. sleeping for %v until %v", timeUntil8, today8PM))
-			}
-			time.Sleep(timeUntil8)
-
-			// if it's past 8, send a slack reminder
+			// send a slack reminder
 			msg := slackMsg{
-				Text: "hey! it's past 8pm and you haven't made a commit today yet. i'll check again in an hour. remember, you want to code!",
+				Text: "hey! you haven't made a commit today yet. i'll check again in an hour. remember, you want to code!",
 			}
 			err = c.sendSlackMsg(msg)
 			if err != nil {
