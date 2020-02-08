@@ -64,6 +64,7 @@ func (c *Config) Start() {
 		}
 
 		c.logger.Info().Msg("start scan")
+		c.logger.Info().Msg(fmt.Sprintf("current time: %v", currentTime))
 		repos, err := c.github.Repositories()
 		if err != nil {
 			c.logger.Err(err).Msg("failed to find repositories associated with the user/orgs requested")
@@ -71,7 +72,7 @@ func (c *Config) Start() {
 		r := fmt.Sprintf("%v", repos)
 		c.logger.Info().Msg(r)
 
-		commit, err := c.github.CommitCreatedToday(repos, c.location)
+		commit, err := c.github.CommitCreatedToday(repos, c.location, currentTime)
 		if err != nil {
 			c.logger.Err(err).Msg("failed to find commit created today successfully")
 		}

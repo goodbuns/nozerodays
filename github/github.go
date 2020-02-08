@@ -97,9 +97,9 @@ func (c *Client) Repositories() ([]string, error) {
 
 // CommitCreatedToday checks the latest commit of each repo until it finds a commit that
 // was created today.
-func (c *Client) CommitCreatedToday(repos []string, location *time.Location) (*Commit, error) {
+func (c *Client) CommitCreatedToday(repos []string, location *time.Location, currentTime time.Time) (*Commit, error) {
 	var commits []Commit
-	today := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, location)
+	today := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 0, 0, 0, 0, location)
 
 	for _, repo := range repos {
 		resp, err := c.Send(http.MethodGet, githubV3Endpoint, "/repos/"+repo+"/commits", "", c.accessToken)
