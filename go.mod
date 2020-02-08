@@ -15,8 +15,8 @@ require (
 	github.com/labstack/echo v3.3.10+incompatible // indirect
 	github.com/labstack/gommon v0.3.0 // indirect
 	github.com/lob/logger-go v1.1.0
-	github.com/pkg/errors v0.9.1 // indirect
-	github.com/rs/zerolog v1.17.2 // indirect
+	github.com/pkg/errors v0.9.1
+	github.com/rs/zerolog v1.17.2
 	github.com/saintfish/chardet v0.0.0-20120816061221-3af4cd4741ca // indirect
 	github.com/temoto/robotstxt v1.1.1 // indirect
 	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553 // indirect

@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nozerodays
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nozerodays
+  template:
+    metadata:
+      labels:
+        app: nozerodays
+    spec:
+      imagePullSecrets:
+      - name: github-packages
+      containers:
+      - name: nozerodays
+        image: docker.pkg.github.com/goodbuns/nozerodays/nozerodays:latest
+        args: ["--username=$(GITHUB_USERNAME)", "--accessToken=$(GITHUB_ACCESS_TOKEN)", "--organizations=$(ORGANIZATIONS)", "--webhook=$(WEBHOOK_URL)", "--location=$(LOCATION)"]
+        env:
+        - name: LOCATION
+          value: "America/Los_Angeles"
+        - name: ORGANIZATIONS
+          value: "goodbuns"
+        - name: WEBHOOK_URL
+          valueFrom:
+            secretKeyRef:
+              name: nozerodays
+              key: webhook-url
+        - name: GITHUB_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: nozerodays
+              key: github-access-token
+        - name: GITHUB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: nozerodays
+              key: username

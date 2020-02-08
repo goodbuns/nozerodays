@@ -2,187 +2,124 @@ package bot
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/goodbuns/nozerodays/github"
+	"github.com/rs/zerolog"
 )
 
-const (
-	githubGraphQLEndpoint = "https://api.github.com/graphql"
-	githubV3Endpoint      = "https://api.github.com"
-)
+// New creates a new bot config.
+func New() *Config {
+	// Get configuration details from command line flags.
+	username := flag.String("username", "", "github username")
+	accessToken := flag.String("accessToken", "", "github access token")
+	webhookURL := flag.String("webhook", "", "slack webhook URL")
+	orgs := flag.String("organizations", "", "list of organizations to whitelist, with spaces between")
+	l := flag.String("location", "", "location name corresponding to a file in the IANA Time Zone database")
+	flag.Parse()
 
-type Config struct {
-	Username    string
-	AccessToken string
-	WebhookURL  string
-	Client      *github.Client
-	// Logger      *log.Logger
-}
+	host, _ := os.Hostname()
+	zl := zerolog.New(os.Stdout).With().Timestamp().Str("host", host)
+	logger := zl.Logger()
 
-type GithubCommit struct {
-	URL    string `json:"html_url"`
-	Commit Commit
-	Author GithubAuthor
-}
+	logger.Info().Msg(fmt.Sprintln("set configuration:", *username, *orgs, *l))
 
-type Commit struct {
-	Author  CommitAuthor
-	Message string
-}
-
-type CommitAuthor struct {
-	Name string
-	Date time.Time
-}
-
-type GithubAuthor struct {
-	Login string
-}
-
-func New(username, accessToken, webhookURL string) *Config {
-	return &Config{
-		Username:    username,
-		AccessToken: accessToken,
-		Client:      github.New(),
-		WebhookURL:  webhookURL,
-		// Logger:      log.New(),
-	}
-}
-
-// todo: figure out logging instead of panicking
-func check(err error) {
+	location, err := time.LoadLocation(*l)
 	if err != nil {
-		fmt.Println(err.Error())
+		logger.Err(err).Msg("")
 		panic(err)
 	}
+
+	return &Config{
+		webhookURL: *webhookURL,
+		github:     github.New(*username, *accessToken, strings.Split(*orgs, " ")),
+		location:   location,
+		logger:     logger,
+	}
 }
 
-func (c *Config) Repositories() []string {
-	// get all repositories that user owns
-	resp, err := c.Client.SendRequest(http.MethodGet, githubV3Endpoint, "/user/repos?type=owner", ``, c.AccessToken)
-
-	defer resp.Body.Close()
-	check(err)
-
-	type RepositoryResponse struct {
-		FullName string `json:"full_name"`
-	}
-	var repos []RepositoryResponse
-	body, err := ioutil.ReadAll(resp.Body)
-	check(err)
-
-	err = json.Unmarshal(body, &repos)
-	check(err)
-
-	// todo: have orgs be some sort of whitelist of organizations, passed in via
-	// flags
-	orgs := []string{"goodbuns"}
-	// get all repos within whitelisted orgs
-	var orgRepos []RepositoryResponse
-	for _, org := range orgs {
-		resp, err = c.Client.SendRequest(http.MethodGet, githubV3Endpoint, "/orgs/"+org+"/repos", "", c.AccessToken)
-		defer resp.Body.Close()
-		check(err)
-
-		body, err = ioutil.ReadAll(resp.Body)
-		check(err)
-
-		err = json.Unmarshal(body, &orgRepos)
-		check(err)
-	}
-
-	repos = append(repos, orgRepos...)
-
-	var r []string
-	for _, repo := range repos {
-		r = append(r, repo.FullName)
-	}
-	return r
+// Config holds all configuration necessary for the bot to run.
+type Config struct {
+	github     *github.Client
+	webhookURL string
+	location   *time.Location
+	logger     zerolog.Logger
 }
 
-func (c *Config) Commits(repos []string) *GithubCommit {
-	// go through commit history for each repo until (1) the date is before
-	// today's date or (2) i am the author and the date is today if i am the
-	// author, return if not, continue if we go through all commits for the day
-	// in all repos and i am not the author of any of those commits, i have not yet
-	// made a commit for this day
+// Start starts the bot.
+func (c *Config) Start() {
+	for true {
+		currentTime := time.Now()
+		// check whether it's past 8pm, if not, sleep until 8pm.
+		today8PM := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 20, 0, 0, 0, c.location)
+		timeUntil8 := time.Until(today8PM)
+		if timeUntil8 > 0 {
+			c.logger.Info().Msg(fmt.Sprintf("it is not yet 8pm. sleeping for %v until %v", timeUntil8, today8PM))
+			time.Sleep(timeUntil8)
+		}
 
-	var commits []GithubCommit
-	today := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.UTC)
+		c.logger.Info().Msg("start scan")
+		repos, err := c.github.Repositories()
+		if err != nil {
+			c.logger.Err(err).Msg("failed to find repositories associated with the user/orgs requested")
+		}
+		r := fmt.Sprintf("%v", repos)
+		c.logger.Info().Msg(r)
 
-	for _, repo := range repos {
-		resp, err := c.Client.SendRequest(http.MethodGet, githubV3Endpoint, "/repos/"+repo+"/commits", "", c.AccessToken)
-		defer resp.Body.Close()
-		check(err)
+		commit, err := c.github.CommitCreatedToday(repos, c.location)
+		if err != nil {
+			c.logger.Err(err).Msg("failed to find commit created today successfully")
+		}
 
-		body, err := ioutil.ReadAll(resp.Body)
-		check(err)
-
-		err = json.Unmarshal(body, &commits)
-		check(err)
-
-		// really only need to look at the latest commit
-		if commits[0].Author.Login == c.Username {
-			if today.Before(commits[0].Commit.Author.Date) {
-				return &(commits[0])
+		if commit != nil {
+			c.logger.Info().Msg(fmt.Sprintf("found commit for today (%s) with commit URL (%s)", commit.Commit.Author.Date.String(), commit.URL))
+			// Send slack message.
+			msg := slackMsg{
+				Text: "good work! commit was made today at " + commit.Commit.Author.Date.String() + ", commit link: " + commit.URL,
 			}
+			err = c.sendSlackMsg(msg)
+			if err != nil {
+				c.logger.Err(err).Msg(fmt.Sprintf("unable to send the following message to slack: %s", msg.Text))
+			}
+
+			// check again tomorrow at 8pm
+			tomorrow := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day()+1, 20, 0, 0, 0, c.location)
+			duration := time.Until(tomorrow)
+			c.logger.Info().Msg(fmt.Sprintf("sleeping for %v until %v", duration, tomorrow))
+			time.Sleep(duration)
+		} else {
+			// send a slack reminder
+			msg := slackMsg{
+				Text: "hey! you haven't made a commit today yet. i'll check again in an hour. remember, you want to code!",
+			}
+			err = c.sendSlackMsg(msg)
+			if err != nil {
+				c.logger.Err(err).Msg(fmt.Sprintf("unable to send the following message to slack: %s", msg.Text))
+			}
+
+			// then sleep for an hour and check again
+			c.logger.Info().Msg("sleeping for an hour to check again")
+			time.Sleep(time.Hour)
 		}
 	}
-	return nil
 }
 
-type SlackMessage struct {
+type slackMsg struct {
 	Text string `json:"text"`
 }
 
-func (c *Config) Start() {
-	for true {
-		r := c.Repositories()
-		commit := c.Commits(r)
-		if c != nil {
-			fmt.Println("found commit for today", *c)
-
-			// send slack message
-			message := SlackMessage{
-				Text: "good work! commit was made today at " + commit.Commit.Author.Date.String() + ", commit link: " + commit.URL,
-			}
-			c.SlackMessage(message)
-
-			// check again tomorrow at 8pm
-			tomorrow := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day()+1, 20, 0, 0, 0, time.Local)
-			duration := time.Until(tomorrow.Local())
-			fmt.Println("sleeping for ", duration, "until", tomorrow.Local(), "now", time.Now())
-			time.Sleep(duration)
-		} else {
-			// do a reminder
-			message := SlackMessage{
-				Text: "hey! it's 8pm and you haven't made a commit today yet. i'll check again in an hour. remember, you want to code!",
-			}
-			c.SlackMessage(message)
-			// then sleep for an hour and check again
-			time.Sleep(time.Hour * 4)
-		}
+// sendSlackMsg sends a request to the provided slack webhook with the provided message.
+func (c *Config) sendSlackMsg(msg slackMsg) error {
+	msgBody, err := json.Marshal(msg)
+	if err != nil {
+		return err
 	}
 
+	_, err = c.github.Send(http.MethodPost, c.webhookURL, "", string(msgBody), "")
+	return err
 }
-
-func (c *Config) SlackMessage(message SlackMessage) {
-	msgBody, err := json.Marshal(message)
-	check(err)
-
-	_, err = c.Client.SendRequest(http.MethodPost, c.WebhookURL, "", string(msgBody), "")
-	check(err)
-}
-
-// features: 1. remind 8pm everyday on slack if commit hasn't been made by user
-// 2. keep track of metrics for how many days i did it
-
-// get list of all organizations check whether i'm an admin of the organization
-// create webhooks for all repos in organization that do not yet have expected
-// webhook create new webhook on new repos in my account or goodbuns receive
-// webhooks create API for webhook when webhook fires, update database w latest
-// time commit worker/server or cron/batch job?

@@ -1,0 +1,20 @@
+name: ci
+
+on: [push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+        id: go
+      - name: Check out code
+        uses: actions/checkout@v1
+        # add unit tests later
+
+  # todo: later make it into a cron job in kubernetes?
+  # todo: create a new github account to login to docker as
+  # todo: add ability to set time when bot scans for commit
