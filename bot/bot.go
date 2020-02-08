@@ -27,7 +27,7 @@ func New() *Config {
 	zl := zerolog.New(os.Stdout).With().Timestamp().Str("host", host)
 	logger := zl.Logger()
 
-	logger.Info().Msg(fmt.Sprintln("set configuration:", *username, *orgs, *l))
+	logger.Info().Msg(fmt.Sprint("set configuration:", *username, *orgs, *l))
 
 	location, err := time.LoadLocation(*l)
 	if err != nil {
@@ -54,7 +54,7 @@ type Config struct {
 // Start starts the bot.
 func (c *Config) Start() {
 	for true {
-		currentTime := time.Now()
+		currentTime := time.Now().In(c.location)
 		// check whether it's past 8pm, if not, sleep until 8pm.
 		today8PM := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), 20, 0, 0, 0, c.location)
 		timeUntil8 := time.Until(today8PM)
