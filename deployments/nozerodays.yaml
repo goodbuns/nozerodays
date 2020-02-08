@@ -17,6 +17,7 @@ spec:
       containers:
       - name: nozerodays
         image: docker.pkg.github.com/goodbuns/nozerodays/nozerodays:latest
+        imagePullPolicy: Always
         args: ["--username=$(GITHUB_USERNAME)", "--accessToken=$(GITHUB_ACCESS_TOKEN)", "--organizations=$(ORGANIZATIONS)", "--webhook=$(WEBHOOK_URL)", "--location=$(LOCATION)"]
         env:
         - name: LOCATION
