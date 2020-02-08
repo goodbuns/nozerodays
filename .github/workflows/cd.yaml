@@ -32,7 +32,7 @@ jobs:
       uses: matootie/dokube@v1.2.0
       with:
         personalAccessToken: ${{ secrets.DIGITALOCEAN_TOKEN }}
-        clusterName: production
+        clusterName: goodbuns
         expirationTime: 300
     - name: Check out code
       uses: actions/checkout@v1
