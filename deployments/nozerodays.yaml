@@ -38,3 +38,8 @@ spec:
             secretKeyRef:
               name: nozerodays
               key: username
+        resources:
+          limits:
+            memory: "32Mi"
+            cpu: "200m"
+            
