@@ -95,8 +95,12 @@ func (c *Config) Start() {
 			time.Sleep(duration)
 		} else {
 			// send a slack reminder
+			text := "hey! you haven't made a commit today yet. remember, you want to code!"
+			if currentTime.Hour() > 22 {
+				text += " last chance today!!"
+			}
 			msg := slackMsg{
-				Text: "hey! you haven't made a commit today yet. i'll check again in an hour. remember, you want to code!",
+				Text: text,
 			}
 			err = c.sendSlackMsg(msg)
 			if err != nil {
@@ -104,8 +108,8 @@ func (c *Config) Start() {
 			}
 
 			// then sleep for an hour and check again
-			c.logger.Info().Msg("sleeping for an hour to check again")
-			time.Sleep(time.Hour)
+			c.logger.Info().Msg("sleeping for 3 hours to check again")
+			time.Sleep(time.Hour * 3)
 		}
 	}
 }
